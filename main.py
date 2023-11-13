@@ -1,24 +1,58 @@
-from pubchempy import *
+from aiohttp import ClientSession
+import argparse
+import csv
+import pubchempy as pcp
+import asyncio
+from tqdm import tqdm
 
-name = "Hydrazinecarboxylic acid, 1,1-dimethylethyl ester"
-name = "Milbemycin B, 5-demethoxy-5-one-6,28-anhydro-25-ethyl-4-methyl-13-chloro-oxime"
-cs = get_compounds(name, "name")
-# print(cs[0].record)
 
-result = []
-for record in cs[0].record:
-    print(record)
-    if record != "props":
-        # print(cs[0].record[record])
-        if record == "id":
-            result.append(cs[0].record[record]["id"]["cid"])
-    else:
-        for prop in cs[0].record[record]:
-            print(prop)
-            if prop["urn"]["label"] == "SMILES":
-                result.append(prop["value"]["sval"])
-            if prop["urn"]["label"] == "InChIKey":
-                result.append(prop["value"]["sval"])
-    print(" ")
+def get_chemical_data(name):
+    if "Analyte" in name:
+        return {"cid": "xxxxxx", "smiles": "xxxxxx", "inchikey": "xxxxxx"}
+    try:
+        compounds = pcp.get_compounds(name, "name")
+        result = {"cid": "", "smiles": "", "inchikey": ""}
 
-print(result)
+        if compounds:
+            compound = compounds[0]
+            result["cid"] = compound.cid
+            result["smiles"] = compound.isomeric_smiles
+            result["inchikey"] = compound.inchikey
+        else:
+            result = {key: "xxxxxx" for key in result.keys()}
+
+        return result
+    except Exception as e:
+        return {"cid": "xxxxxx", "smiles": "xxxxxx", "inchikey": "xxxxxx"}
+
+
+def process_csv_row(chemical_name):
+    data = get_chemical_data(chemical_name)
+    return [chemical_name, data["cid"], data["smiles"], data["inchikey"]]
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Process a CSV file to obtain chemical data."
+    )
+    parser.add_argument("file_path", help="Path to the input CSV file")
+    parser.add_argument("output_file", help="Path to the output CSV file")
+    args = parser.parse_args()
+
+    with open(args.file_path, newline="") as csvfile:
+        reader = csv.reader(csvfile)
+        # Assuming each row has one column
+        tasks = [row[0] for row in reader]
+        results = []
+        for name in tqdm(tasks):
+            results.append(process_csv_row(name))
+
+    with open(args.output_file, "w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        # Writing headers
+        writer.writerow(["Name", "CID", "SMILES", "InChIKey"])
+        writer.writerows(results)
+
+
+if __name__ == "__main__":
+    main()
