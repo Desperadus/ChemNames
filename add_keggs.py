@@ -3,6 +3,7 @@ import requests
 from tqdm import tqdm
 import re
 import json
+import argparse
 
 
 def get_kegg_id(cid):
@@ -24,9 +25,8 @@ def get_kegg_id(cid):
     return None
 
 
-def main():
-    df = pd.read_csv("output.csv")
-
+def main(input_file):
+    df = pd.read_csv(input_file)
     df["kegg"] = None
 
     for index, row in tqdm(df.iterrows()):
@@ -44,5 +44,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(
+        description="Process a CSV file to append KEGG IDs."
+    )
+    parser.add_argument("input_file", help="Path to the input CSV file")
+    args = parser.parse_args()
+
+    main(args.input_file)
     # print(get_kegg_id(280))
