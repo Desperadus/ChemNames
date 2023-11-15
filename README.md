@@ -30,6 +30,10 @@ Navigate to the script's directory in your terminal and run the following comman
 ```bash
 python3 main.py input_file.csv output_file.csv
 ```
+If you wish to add kegg ids to the file, that already contains CIDs, run the following command:
+```bash
+python3 add_kegg.py input_file.csv output_file.csv
+```
 
 Replace `input_file.csv` with the path to your input CSV file, and `output_file.csv` with the desired path for the output file.
 
