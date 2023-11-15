@@ -25,7 +25,7 @@ def get_kegg_id(cid):
     return None
 
 
-def main(input_file):
+def main(input_file, output_file):
     df = pd.read_csv(input_file)
     df["kegg"] = None
 
@@ -40,7 +40,7 @@ def main(input_file):
         else:
             df.at[index, "kegg"] = "xxxxxx"
 
-    df.to_csv("updated_file.csv", index=False)
+    df.to_csv(output_file, index=False)
 
 
 if __name__ == "__main__":
@@ -48,7 +48,8 @@ if __name__ == "__main__":
         description="Process a CSV file to append KEGG IDs."
     )
     parser.add_argument("input_file", help="Path to the input CSV file")
+    parser.add_argument("output_file", help="Path to the output CSV file")
     args = parser.parse_args()
 
-    main(args.input_file)
+    main(args.input_file, args.output_file)
     # print(get_kegg_id(280))
