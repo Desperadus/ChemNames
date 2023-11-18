@@ -12,11 +12,12 @@ The script requires the following Python libraries:
 - `aiohttp`
 - `pubchempy`
 - `tqdm`
+- `pandas`
 
 You can install these dependencies via pip. Run the following command:
 
 ```bash
-pip install aiohttp pubchempy tqdm
+pip install aiohttp pubchempy tqdm pandas
 ```
 
 ## Usage
