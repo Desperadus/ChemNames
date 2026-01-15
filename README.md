@@ -1,46 +1,66 @@
-# Chemical Data Retrieval Script
+# ChemNames
 
-Script designed to map compound names to their corresponding PubChem CIDs, SMILES, and InChIKeys.
+A CLI utility to retrieve chemical data (SMILES, InChI, Full Names) from PubChem and map Compound names to their corresponding identifiers.
 
 ## Installation
 
-Ensure you have python 3.x installed on your system.
+This package is managed with standard Python tools and can be installed via `pip`.
 
-### Dependencies
-
-The script requires the following Python libraries:
-- `aiohttp`
-- `pubchempy`
-- `tqdm`
-- `pandas`
-
-You can install these dependencies via pip. Run the following command:
+1. Clone the repository.
+2. Install the package in editable mode (or normal mode):
 
 ```bash
-pip install aiohttp pubchempy tqdm pandas
+pip install .
 ```
+
+Or using `uv` to manage the environment:
+
+```bash
+uv pip install .
+```
+
+After installation, the CLI tool `addchemnames` will be available in your path.
 
 ## Usage
 
-To use the script, you will need a CSV file containing chemical names (one name per line, without a header). The script will process this file and create a new CSV file with the chemical names and their corresponding CID, SMILES, and InChIKey.
+### 1. Retrieve Chemical Data
 
-### Running the Script
+The main utility reads a CSV file containing a `Compound` column, queries PubChem, and outputs a new CSV with added `SMILES`, `InChI`, and `Full Name` columns.
 
-Navigate to the script's directory in your terminal and run the following command:
+**Input CSV Format:**
+The input file **MUST** contain a column named `Compound`.
+
+Example `input.csv`:
+```csv
+Compound,ID
+Aspirin,1
+Caffeine,2
+```
+
+**Run the command:**
 
 ```bash
-python3 main.py input_file.csv output_file.csv
-```
-If you wish to add kegg ids to the file, that already contains CIDs, run the following command:
-```bash
-python3 add_kegg.py input_file.csv output_file.csv
+addchemnames input.csv output.csv
 ```
 
-Replace `input_file.csv` with the path to your input CSV file, and `output_file.csv` with the desired path for the output file.
+**Output:**
+The tool will generate `output.csv` with the enriched data. If a compound is not found, "xxxxxx" will be used as the placeholder.
+
+### 2. Add KEGG IDs
+
+If you have a CSV file that already contains PubChem CIDs (e.g., from a previous step or source), you can use `add_keggs.py` (located in the root of the repository) to append KEGG IDs.
+
+**Run the command:**
+
+```bash
+python add_keggs.py input_with_cids.csv output_with_keggs.csv
+```
 
 ## Notes
 
-- If a chemical name cannot be found in the PubChem database, the corresponding fields in the output file will be filled with 'xxxxxx'.
+- **Network Requests**: This tool makes network requests to PubChem. Large files may take some time to process.
+- **Rate Limiting**: The tool uses threading to speed up requests, but be mindful of PubChem's usage policies.
+- **Data Accuracy**: Data is fetched "as is" from PubChem.
 
 ## License
 
