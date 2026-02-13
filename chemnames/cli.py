@@ -2,7 +2,7 @@ import csv
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict
 import typer
 import pubchempy as pcp
 from tqdm import tqdm
@@ -60,8 +60,13 @@ def get_chemical_data_sync(name: str, debug: bool = False) -> Dict[str, str]:
         "Full Name": "xxxxxx"
     }
 
-async def process_row(row: Dict[str, str], executor: ThreadPoolExecutor, debug: bool) -> Dict[str, str]:
-    compound_name = row.get("Compound")
+async def process_row(
+    row: Dict[str, str],
+    executor: ThreadPoolExecutor,
+    debug: bool,
+    compound_col: str,
+) -> Dict[str, str]:
+    compound_name = row.get(compound_col)
     if not compound_name:
         return row
     
@@ -72,7 +77,7 @@ async def process_row(row: Dict[str, str], executor: ThreadPoolExecutor, debug: 
     # Merge existing row data with new data
     return {**row, **data}
 
-async def process_csv_async(input_path: Path, output_path: Path, debug: bool):
+async def process_csv_async(input_path: Path, output_path: Path, debug: bool, compound_col: str):
     if not input_path.exists():
         typer.secho(f"Error: Input file '{input_path}' not found.", fg=typer.colors.RED)
         raise typer.Exit(code=1)
@@ -87,8 +92,11 @@ async def process_csv_async(input_path: Path, output_path: Path, debug: bool):
                  typer.secho("Error: CSV file is empty or missing headers.", fg=typer.colors.RED)
                  raise typer.Exit(code=1)
             
-            if "Compound" not in reader.fieldnames:
-                typer.secho("Error: Input CSV must contain a 'Compound' column.", fg=typer.colors.RED)
+            if compound_col not in reader.fieldnames:
+                typer.secho(
+                    f"Error: Input CSV must contain a '{compound_col}' column.",
+                    fg=typer.colors.RED,
+                )
                 raise typer.Exit(code=1)
                 
             fieldnames = list(reader.fieldnames)
@@ -105,11 +113,15 @@ async def process_csv_async(input_path: Path, output_path: Path, debug: bool):
 
     typer.echo(f"Processing {len(rows)} compounds...")
     
-    updated_rows = []
+    updated_rows = [None] * len(rows)
     with ThreadPoolExecutor(max_workers=5) as executor:
-        tasks = [process_row(row, executor, debug) for row in rows]
+        async def process_row_with_index(idx: int, row: Dict[str, str]):
+            return idx, await process_row(row, executor, debug, compound_col)
+
+        tasks = [process_row_with_index(idx, row) for idx, row in enumerate(rows)]
         for task in tqdm(asyncio.as_completed(tasks), total=len(tasks)):
-            updated_rows.append(await task)
+            idx, updated_row = await task
+            updated_rows[idx] = updated_row
 
     # Write output CSV
     try:
@@ -123,15 +135,20 @@ async def process_csv_async(input_path: Path, output_path: Path, debug: bool):
         raise typer.Exit(code=1)
 
 def main(
-    input_file: Path = typer.Argument(..., help="Path to the input CSV file. Must contain a 'Compound' column."),
+    input_file: Path = typer.Argument(..., help="Path to the input CSV file."),
     output_file: Path = typer.Argument(..., help="Path to the output CSV file."),
-    debug: bool = typer.Option(False, "--debug", help="Enable debug logging to see fetch errors.")
+    debug: bool = typer.Option(False, "--debug", help="Enable debug logging to see fetch errors."),
+    compound_col: str = typer.Option(
+        "Compound",
+        "--compound_col",
+        help="Column name to use when looking up compound names.",
+    ),
 ):
     """
-    Reads a CSV file, looks up chemical data (SMILES, InChI, Full Name) for entries in the 'Compound' column using PubChem,
+    Reads a CSV file, looks up chemical data (SMILES, InChI, Full Name) for entries in the selected compound column using PubChem,
     and writes the result to a new CSV file.
     """
-    asyncio.run(process_csv_async(input_file, output_file, debug))
+    asyncio.run(process_csv_async(input_file, output_file, debug, compound_col))
 
 def entry_point():
     typer.run(main)
