@@ -6,17 +6,29 @@ A CLI utility to retrieve chemical data (SMILES, InChI, Full Names) from PubChem
 
 This package is managed with standard Python tools and can be installed via `pip`.
 
+run:
+```bash
+pip install chemnames
+```
+
+Or you can get the newest release by installing it from here by running:
+```bash
+pip install git+https://github.com/Desperadus/ChemNames
+```
+
+For manual editable install follow these steps:
+
 1. Clone the repository.
 2. Install the package in editable mode (or normal mode):
 
 ```bash
-pip install .
+pip install . -e
 ```
 
 Or using `uv` to manage the environment:
 
 ```bash
-uv pip install .
+uv pip install . -e
 ```
 
 After installation, the CLI tool `addchemnames` will be available in your path.
