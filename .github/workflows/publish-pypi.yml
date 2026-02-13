@@ -1,0 +1,89 @@
+name: Publish to PyPI
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Decide whether publish is needed
+        id: check
+        run: |
+          python - <<'PY'
+          import json
+          import tomllib
+          import urllib.error
+          import urllib.request
+          from pathlib import Path
+
+          data = tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8'))
+          project = data.get('project', {})
+          name = project.get('name')
+          version = project.get('version')
+
+          if not name or not version:
+              raise SystemExit('pyproject.toml must define project.name and project.version')
+
+          url = f'https://pypi.org/pypi/{name}/json'
+          publish_needed = True
+          reason = 'package does not exist on PyPI yet'
+
+          try:
+              with urllib.request.urlopen(url) as resp:
+                  pypi_data = json.load(resp)
+              releases = pypi_data.get('releases', {})
+              if version in releases and releases[version]:
+                  publish_needed = False
+                  reason = f'version {version} already exists on PyPI'
+              else:
+                  publish_needed = True
+                  reason = f'version {version} not found on PyPI'
+          except urllib.error.HTTPError as e:
+              if e.code == 404:
+                  publish_needed = True
+                  reason = 'package does not exist on PyPI yet'
+              else:
+                  raise
+
+          with open('/tmp/publish_outputs.txt', 'w', encoding='utf-8') as f:
+              f.write(f'project_name={name}\n')
+              f.write(f'project_version={version}\n')
+              f.write(f'publish_needed={str(publish_needed).lower()}\n')
+              f.write(f'reason={reason}\n')
+          PY
+
+          cat /tmp/publish_outputs.txt >> "$GITHUB_OUTPUT"
+
+      - name: Show decision
+        run: |
+          echo "Project: ${{ steps.check.outputs.project_name }}"
+          echo "Version: ${{ steps.check.outputs.project_version }}"
+          echo "Publish needed: ${{ steps.check.outputs.publish_needed }}"
+          echo "Reason: ${{ steps.check.outputs.reason }}"
+
+      - name: Build distribution
+        if: steps.check.outputs.publish_needed == 'true'
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - name: Publish to PyPI
+        if: steps.check.outputs.publish_needed == 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1
